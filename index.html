@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Trading Journal</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: Arial, sans-serif;
+}
+
+body {
+    background: #0b1018;
+    color: #fff;
+    padding: 25px;
+}
+
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+header h1 span { color: #00d09c; }
+
+header p, .muted {
+    color: #8993a2;
+    font-size: 13px;
+    margin-top: 7px;
+}
+
+button {
+    background: #00d09c;
+    color: #06140f;
+    padding: 11px 16px;
+    border: none;
+    border-radius: 7px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+button:hover { opacity: .85; }
+
+.stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(175px, 1fr));
+    gap: 15px;
+    margin-bottom: 25px;
+}
+
+.card, section {
+    background: #151d29;
+    border: 1px solid #253144;
+    border-radius: 12px;
+    padding: 20px;
+}
+
+.card p {
+    color: #8993a2;
+    font-size: 13px;
+}
+
+.card h2 {
+    margin-top: 12px;
+    font-size: 25px;
+}
+
+.green { color: #00d09c; }
+.red { color: #ff6375; }
+
+section { margin-bottom: 25px; }
+
+section h2 {
+    font-size: 19px;
+    margin-bottom: 20px;
+}
+
+.chart-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 18px;
+    margin-bottom: 25px;
+}
+
+.chart-box {
+    background: #151d29;
+    border: 1px solid #253144;
+    border-radius: 12px;
+    padding: 20px;
+    min-width: 0;
+}
+
+.chart-box h3 {
+    margin-bottom: 20px;
+    font-size: 16px;
+}
+
+.chart-container {
+    height: 280px;
+    position: relative;
+}
+
+.performance-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 15px;
+}
+
+.metric {
+    background: #0e1622;
+    border-radius: 9px;
+    padding: 17px;
+}
+
+.metric p {
+    font-size: 12px;
+    color: #8993a2;
+}
+
+.metric h3 {
+    margin-top: 10px;
+    font-size: 21px;
+}
+
+form {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 13px;
+}
+
+input, select, textarea {
+    width: 100%;
+    background: #0b1018;
+    border: 1px solid #303d50;
+    color: white;
+    padding: 12px;
+    border-radius: 7px;
+    outline: none;
+}
+
+textarea {
+    grid-column: 1 / -1;
+    resize: vertical;
+}
+
+.table-container { overflow-x: auto; }
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 850px;
+}
+
+th, td {
+    padding: 14px;
+    text-align: left;
+    border-bottom: 1px solid #293344;
+    font-size: 12px;
+}
+
+th { color: #8993a2; }
+
+.delete-btn {
+    background: #ff6375;
+    color: white;
+    padding: 7px 10px;
+}
+
+.export-btn { margin-bottom: 15px; }
+
+.rules p {
+    color: #b7c1ce;
+    line-height: 2;
+    font-size: 14px;
+}
+
+@media(max-width: 800px) {
+    .chart-grid { grid-template-columns: 1fr; }
+    body { padding: 13px; }
+}
+</style>
+</head>
+
+<body>
+
+<header>
+    <div>
+        <h1>MY <span>TRADING JOURNAL</span></h1>
+        <p>Personal Trading Performance Dashboard</p>
+    </div>
+    <div>
+        <p id="today"></p>
+        <p class="muted">2027 Trading Journey</p>
+    </div>
+</header>
+
+<div class="stats">
+    <div class="card">
+        <p>Total P&amp;L</p>
+        <h2 id="totalPL">$0.00</h2>
+    </div>
+
+    <div class="card">
+        <p>Total Orders</p>
+        <h2 id="totalTrades">0</h2>
+    </div>
+
+    <div class="card">
+        <p>Profitable Orders</p>
+        <h2 class="green" id="wins">0</h2>
+    </div>
+
+    <div class="card">
+        <p>Losing Orders</p>
+        <h2 class="red" id="losses">0</h2>
+    </div>
+
+    <div class="card">
+        <p>Win Rate</p>
+        <h2 id="winRate">0%</h2>
+    </div>
+
+    <div class="card">
+        <p>Trading Volume</p>
+        <h2 id="volume">0.00</h2>
+    </div>
+</div>
+
+<div class="chart-grid">
+    <div class="chart-box">
+        <h3>Equity Curve</h3>
+        <div class="chart-container">
+            <canvas id="equityChart"></canvas>
+        </div>
+    </div>
+
+    <div class="chart-box">
+        <h3>Trade Distribution</h3>
+        <div class="chart-container">
+            <canvas id="pieChart"></canvas>
+        </div>
+    </div>
+</div>
+
+<div class="chart-grid">
+    <div class="chart-box">
+        <h3>Profit &amp; Loss Performance</h3>
+        <div class="chart-container">
+            <canvas id="plChart"></canvas>
+        </div>
+    </div>
+
+    <div class="chart-box">
+        <h3>Buy vs Sell</h3>
+        <div class="chart-container">
+            <canvas id="directionChart"></canvas>
+        </div>
+    </div>
+</div>
+
+<section>
+    <h2>📊 Performance Analytics</h2>
+    <div class="performance-grid">
+        <div class="metric">
+            <p>Average Win</p>
+            <h3 class="green" id="avgWin">$0.00</h3>
+        </div>
+
+        <div class="metric">
+            <p>Average Loss</p>
+            <h3 class="red" id="avgLoss">$0.00</h3>
+        </div>
+
+        <div class="metric">
+            <p>Best Trade</p>
+            <h3 class="green" id="best">$0.00</h3>
+        </div>
+
+        <div class="metric">
+            <p>Worst Trade</p>
+            <h3 class="red" id="worst">$0.00</h3>
+        </div>
+
+        <div class="metric">
+            <p>Average R:R</p>
+            <h3 id="avgRR">N/A</h3>
+        </div>
+
+        <div class="metric">
+            <p>Breakeven Orders</p>
+            <h3 id="breakeven">0</h3>
+        </div>
+
+        <div class="metric">
+            <p>Consecutive Wins</p>
+            <h3 id="streak">0</h3>
+        </div>
+
+        <div class="metric">
+            <p>Consecutive Losses</p>
+            <h3 id="lossStreak">0</h3>
+        </div>
+    </div>
+</section>
+
+<section>
+    <h2>📅 Monthly Performance</h2>
+    <div class="chart-container">
+        <canvas id="monthlyChart"></canvas>
+    </div>
+</section>
+
+<section>
+    <h2>📝 Record New Trade</h2>
+    <form id="tradeForm">
+        <input type="date" id="date" required>
+
+        <select id="pair">
+            <option value="XAUUSD">XAUUSD (Gold)</option>
+            <option value="EURUSD">EURUSD</option>
+            <option value="GBPUSD">GBPUSD</option>
+            <option value="BTCUSD">BTCUSD</option>
+            <option value="Other">Other</option>
+        </select>
+
+        <select id="direction">
+            <option value="Buy">Buy</option>
+            <option value="Sell">Sell</option>
+        </select>
+
+        <select id="result">
+            <option value="Win">Win</option>
+            <option value="Loss">Loss</option>
+            <option value="Breakeven">Breakeven</option>
+        </select>
+
+        <input type="number" id="profit" step="0.01"
+            placeholder="P&amp;L ($)" required>
+
+        <input type="number" id="lot" step="0.01" min="0"
+            placeholder="Lot Size" required>
+
+        <input type="number" id="entry" step="0.00001"
+            placeholder="Entry Price">
+
+        <input type="number" id="exit" step="0.00001"
+            placeholder="Exit Price">
+
+        <input type="number" id="sl" step="0.00001"
+            placeholder="Stop Loss">
+
+        <input type="number" id="tp" step="0.00001"
+            placeholder="Take Profit">
+
+        <input type="number" id="risk" step="0.01"
+            placeholder="Risk ($)">
+
+        <input type="text" id="rr" placeholder="R:R e.g. 1:3">
+
+        <select id="session">
+            <option value="London">London Session</option>
+            <option value="New York">New York Session</option>
+            <option value="Asian">Asian Session</option>
+            <option value="Other">Other</option>
+        </select>
+
+        <select id="setup">
+            <option value="FVG">FVG</option>
+            <option value="IFVG">IFVG</option>
+            <option value="Liquidity Sweep">Liquidity Sweep</option>
+            <option value="MSS">MSS</option>
+            <option value="Other">Other</option>
+        </select>
+
+        <textarea id="notes" rows="3"
+            placeholder="Trade analysis, emotions and lessons learned..."></textarea>
+
+        <button type="submit">+ Save Trade</button>
+    </form>
+</section>
+
+<section>
+    <h2>📚 Trading History</h2>
+    <button class="export-btn" type="button" onclick="exportCSV()">
+        Export Trades to CSV
+    </button>
+
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Pair</th>
+                    <th>Direction</th>
+                    <th>Result</th>
+                    <th>P&amp;L</th>
+                    <th>Lots</th>
+                    <th>Session</th>
+                    <th>Setup</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+
+            <tbody id="history"></tbody>
+        </table>
+    </div>
+</section>
+
+<section>
+    <h2>🎯 My Trading Rules</h2>
+    <div class="rules">
+        <p>1. Never enter without confirmation.</p>
+        <p>2. Wait for liquidity sweep.</p>
+        <p>3. Look for MSS and valid FVG/IFVG.</p>
+        <p>4. Respect my Stop Loss.</p>
+        <p>5. Never revenge trade.</p>
+        <p>6. Protect my capital.</p>
+        <p>7. Record every trade.</p>
+        <p>8. Patience over emotions.</p>
+    </div>
+</section>
+
+<script>
+let trades = JSON.parse(localStorage.getItem("myTrades") || "[]");
+
+function saveTrades() {
+    localStorage.setItem("myTrades", JSON.stringify(trades));
+}
+
+function localDate() {
+    const parts = new Intl.DateTimeFormat("en-CA", {
+        timeZone: "Africa/Nairobi",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit"
+    }).formatToParts(new Date());
+
+    const values = {};
+    parts.forEach(part => values[part.type] = part.value);
+
+    return `${values.year}-${values.month}-${values.day}`;
+}
+
+document.getElementById("today").textContent =
+    new Date().toLocaleDateString("en-KE", {
+        timeZone: "Africa/Nairobi",
+        dateStyle: "full"
+    });
+
+document.getElementById("date").value = localDate();
+
+Chart.defaults.color = "#aab4c2";
+Chart.defaults.font.family = "Arial";
+
+let equityChart, pieChart, plChart, directionChart, monthlyChart;
+
+function money(value) {
+    return (value < 0 ? "-$" : "$") + Math.abs(value).toFixed(2);
+}
+
+function createCharts() {
+    equityChart = new Chart(document.getElementById("equityChart"), {
+        type: "line",
+        data: {
+            labels: [],
+            datasets: [{
+                label: "Cumulative P&L",
+                data: [],
+                borderColor: "#00d09c",
+                backgroundColor: "rgba(0,208,156,.12)",
+                fill: true,
+                tension: .35
+            }]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+    });
+
+    pieChart = new Chart(document.getElementById("pieChart"), {
+        type: "pie",
+        data: {
+            labels: ["Wins", "Losses", "Breakeven"],
+            datasets: [{
+                data: [0, 0, 0],
+                backgroundColor: ["#00d09c", "#ff6375", "#e6b84c"]
+            }]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+    });
+
+    plChart = new Chart(document.getElementById("plChart"), {
+        type: "bar",
+        data: {
+            labels: [],
+            datasets: [{
+                label: "Profit / Loss",
+                data: [],
+                backgroundColor: []
+            }]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+    });
+
+    directionChart = new Chart(document.getElementById("directionChart"), {
+        type: "bar",
+        data: {
+            labels: ["Buy", "Sell"],
+            datasets: [{
+                label: "P&L",
+                data: [0, 0],
+                backgroundColor: ["#00d09c", "#ff6375"]
+            }]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+    });
+
+    monthlyChart = new Chart(document.getElementById("monthlyChart"), {
+        type: "bar",
+        data: {
+            labels: [],
+            datasets: [{
+                label: "Monthly P&L",
+                data: [],
+                backgroundColor: []
+            }]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+    });
+}
+
+function updateDashboard() {
+    const ordered = [...trades].sort((a, b) =>
+        a.date.localeCompare(b.date)
+    );
+
+    const wins = trades.filter(trade => trade.result === "Win");
+    const losses = trades.filter(trade => trade.result === "Loss");
+    const breakeven = trades.filter(trade => trade.result === "Breakeven");
+
+    const totalPL = trades.reduce((sum, trade) => sum + Number(trade.profit || 0), 0);
+    const volume = trades.reduce((sum, trade) => sum + Number(trade.lot || 0), 0);
+
+    const winRate = trades.length
+        ? (wins.length / trades.length * 100).toFixed(1)
+        : 0;
+
+    document.getElementById("totalPL").textContent = money(totalPL);
+    document.getElementById("totalPL").className = totalPL >= 0 ? "green" : "red";
+
+    document.getElementById("totalTrades").textContent = trades.length;
+    document.getElementById("wins").textContent = wins.length;
+    document.getElementById("losses").textContent = losses.length;
+    document.getElementById("winRate").textContent = winRate + "%";
+    document.getElementById("volume").textContent = volume.toFixed(2);
+
+    const avgWin = wins.length
+        ? wins.reduce((sum, trade) => sum + Number(trade.profit), 0) / wins.length
+        : 0;
+
+    const avgLoss = losses.length
+        ? losses.reduce((sum, trade) => sum + Number(trade.profit), 0) / losses.length
+        : 0;
+
+    document.getElementById("avgWin").textContent = money(avgWin);
+    document.getElementById("avgLoss").textContent = money(avgLoss);
+
+    document.getElementById("best").textContent =
+        money(wins.length ? Math.max(...wins.map(trade => Number(trade.profit))) : 0);
+
+    document.getElementById("worst").textContent =
+        money(losses.length ? Math.min(...losses.map(trade => Number(trade.profit))) : 0);
+
+    const rrValues = trades.map(trade => {
+        const match = String(trade.rr || "").match(/(\d+(?:\.\d+)?):(\d+(?:\.\d+)?)/);
+        return match ? Number(match[2]) / Number(match[1]) : null;
+    }).filter(value => value !== null);
+
+    document.getElementById("avgRR").textContent =
+        rrValues.length
+            ? "1:" + (rrValues.reduce((sum, value) => sum + value, 0) / rrValues.length).toFixed(2)
+            : "N/A";
+
+    document.getElementById("breakeven").textContent = breakeven.length;
+
+    let winStreak = 0;
+    let lossStreak = 0;
+    let currentWin = 0;
+    let currentLoss = 0;
+
+    for (const trade of ordered) {
+        if (trade.result === "Win") {
+            currentWin++;
+            currentLoss = 0;
+        } else if (trade.result === "Loss") {
+            currentLoss++;
+            currentWin = 0;
+        } else {
+            currentWin = 0;
+            currentLoss = 0;
+        }
+
+        winStreak = Math.max(winStreak, currentWin);
+        lossStreak = Math.max(lossStreak, currentLoss);
+    }
+
+    document.getElementById("streak").textContent = winStreak;
+    document.getElementById("lossStreak").textContent = lossStreak;
+
+    let cumulative = 0;
+    const equityData = ordered.map(trade => {
+        cumulative += Number(trade.profit || 0);
+        return cumulative;
+    });
+
+    equityChart.data.labels = ordered.map(trade => trade.date);
+    equityChart.data.datasets[0].data = equityData;
+    equityChart.update();
+
+    pieChart.data.datasets[0].data = [
+        wins.length,
+        losses.length,
+        breakeven.length
+    ];
+    pieChart.update();
+
+    plChart.data.labels = ordered.map(trade => trade.date);
+    plChart.data.datasets[0].data = ordered.map(trade => Number(trade.profit || 0));
+    plChart.data.datasets[0].backgroundColor =
+        ordered.map(trade => Number(trade.profit || 0) >= 0 ? "#00d09c" : "#ff6375");
+    plChart.update();
+
+    const buyPL = trades
+        .filter(trade => trade.direction === "Buy")
+        .reduce((sum, trade) => sum + Number(trade.profit || 0), 0);
+
+    const sellPL = trades
+        .filter(trade => trade.direction === "Sell")
+        .reduce((sum, trade) => sum + Number(trade.profit || 0), 0);
+
+    directionChart.data.datasets[0].data = [buyPL, sellPL];
+    directionChart.update();
+
+    const months = {};
+
+    ordered.forEach(trade => {
+        const month = trade.date.substring(0, 7);
+        months[month] = (months[month] || 0) + Number(trade.profit || 0);
+    });
+
+    monthlyChart.data.labels = Object.keys(months);
+    monthlyChart.data.datasets[0].data = Object.values(months);
+    monthlyChart.data.datasets[0].backgroundColor =
+        Object.values(months).map(value => value >= 0 ? "#00d09c" : "#ff6375");
+    monthlyChart.update();
+}
+
+function renderHistory() {
+    const history = document.getElementById("history");
+    history.innerHTML = "";
+
+    trades.forEach((trade, index) => {
+        const row = document.createElement("tr");
+
+        const values = [
+            trade.date,
+            trade.pair,
+            trade.direction,
+            trade.result,
+            money(Number(trade.profit || 0)),
+            Number(trade.lot || 0).toFixed(2),
+            trade.session || "-",
+            trade.setup || "-"
+        ];
+
+        values.forEach((value, valueIndex) => {
+            const cell = document.createElement("td");
+            cell.textContent = value;
+
+            if (valueIndex === 4) {
+                cell.className = Number(trade.profit || 0) >= 0 ? "green" : "red";
+            }
+
+            row.appendChild(cell);
+        });
+
+        const action = document.createElement("td");
+        const button = document.createElement("button");
+
+        button.textContent = "Delete";
+        button.className = "delete-btn";
+
+        button.onclick = () => {
+            if (confirm("Are you sure you want to delete this trade?")) {
+                trades.splice(index, 1);
+                saveTrades();
+                renderHistory();
+                updateDashboard();
+            }
+        };
+
+        action.appendChild(button);
+        row.appendChild(action);
+        history.appendChild(row);
+    });
+}
+
+document.getElementById("tradeForm").addEventListener("submit", function(event) {
+    event.preventDefault();
+
+    const trade = {
+        date: document.getElementById("date").value,
+        pair: document.getElementById("pair").value,
+        direction: document.getElementById("direction").value,
+        result: document.getElementById("result").value,
+        profit: Number(document.getElementById("profit").value),
+        lot: Number(document.getElementById("lot").value),
+        entry: document.getElementById("entry").value,
+        exit: document.getElementById("exit").value,
+        sl: document.getElementById("sl").value,
+        tp: document.getElementById("tp").value,
+        risk: document.getElementById("risk").value,
+        rr: document.getElementById("rr").value,
+        session: document.getElementById("session").value,
+        setup: document.getElementById("setup").value,
+        notes: document.getElementById("notes").value
+    };
+
+    trades.unshift(trade);
+
+    saveTrades();
+    renderHistory();
+    updateDashboard();
+
+    this.reset();
+    document.getElementById("date").value = localDate();
+});
+
+function exportCSV() {
+    if (!trades.length) {
+        alert("No trades available to export.");
+        return;
+    }
+
+    const headers = [
+        "Date", "Pair", "Direction", "Result", "Profit/Loss",
+        "Lot Size", "Entry", "Exit", "Stop Loss", "Take Profit",
+        "Risk", "Risk Reward", "Session", "Setup", "Notes"
+    ];
+
+    const rows = trades.map(trade => [
+        trade.date, trade.pair, trade.direction, trade.result, trade.profit, trade.lot,
+        trade.entry, trade.exit, trade.sl, trade.tp, trade.risk, trade.rr,
+        trade.session, trade.setup, trade.notes
+    ]);
+
+    const escapeCSV = value =>
+        '"' + String(value ?? "").replace(/"/g, '""') + '"';
+
+    const csv = [headers, ...rows]
+        .map(row => row.map(escapeCSV).join(","))
+        .join("\r\n");
+
+    const blob = new Blob(["\uFEFF" + csv], {
+        type: "text/csv;charset=utf-8;"
+    });
+
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+
+    link.href = url;
+    link.download = "My_Trading_Journal.csv";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+createCharts();
+renderHistory();
+updateDashboard();
+</script>
+
+</body>
+</html>
